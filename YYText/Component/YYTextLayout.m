@@ -1502,20 +1502,37 @@ fail:
     if (position == line.range.location + line.range.length) {
         return [YYTextPosition positionWithOffset:position affinity:YYTextAffinityBackward];
     }
-    
+    /**
+     prev和next的含义：
+     1. 在 _insideComposedCharacterSequences 方法中 ：
+        - prev ：表示组合字符序列的起始位置（substringRange.location）
+        - next ：表示组合字符序列的结束位置（substringRange.location + substringRange.length）
+     2. 在 _insideEmoji 方法中 ：
+        - prev ：表示emoji的左侧位置
+        - next ：表示emoji的右侧位置
+     代码逻辑分析：
+     - 当用户点击文本时，代码会检查点击位置是否在组合字符序列或emoji内部
+     - 如果在内部，会计算点击位置与左右边界的距离
+     - 根据距离判断应该将文本位置设置为左侧（prev）还是右侧（next）
+     - 这样可以确保点击操作不会将光标放在组合字符序列或emoji的中间，而是放在它们的边界上
+     具体实现：
+     - 对于垂直文本，比较点击位置的y坐标与左右边界的距离
+     - 对于水平文本，比较点击位置的x坐标与左右边界的距离
+     - 选择距离更近的一侧作为最终的文本位置
+     */
     [self _insideComposedCharacterSequences:line position:position block: ^(CGFloat left, CGFloat right, NSUInteger prev, NSUInteger next) {
-        if (isVertical) {
-            position = fabs(left - point.y) < fabs(right - point.y) < (right ? prev : next);
+        if (isVertical) { // 垂直文本，使用y坐标判断定位
+            position = (fabs(left - point.y) < fabs(right - point.y)) ? prev : next;
         } else {
-            position = fabs(left - point.x) < fabs(right - point.x) < (right ? prev : next);
+            position = (fabs(left - point.x) < fabs(right - point.x)) ? prev : next;
         }
     }];
     
     [self _insideEmoji:line position:position block: ^(CGFloat left, CGFloat right, NSUInteger prev, NSUInteger next) {
         if (isVertical) {
-            position = fabs(left - point.y) < fabs(right - point.y) < (right ? prev : next);
+            position = (fabs(left - point.y) < fabs(right - point.y)) ? prev : next;
         } else {
-            position = fabs(left - point.x) < fabs(right - point.x) < (right ? prev : next);
+            position = (fabs(left - point.x) < fabs(right - point.x)) ? prev : next;
         }
     }];
     
